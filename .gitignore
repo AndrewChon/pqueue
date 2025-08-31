@@ -1,0 +1,59 @@
+# Binaries
+*.exe*
+*.dll
+*.so
+*.dylib
+*.a
+*.out
+bin/
+/output*/
+/_output*/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Code coverage profiles and other test artifacts
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# env file
+.env
+.envrc
+
+# JetBrains 
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Vim/Neovim
+*.swp
+*.swo
+.*.swp
+.*.swo
+
+# Vim/Neovim/Emacs
+*~
+
+# Emacs
+\#*\#
+.\#*
+
+# macOS
+.DS_[sS]tore
+._*
+
+# Jenkins
+/_gopath/
+/.config/gcloud*/
+/.gsutil/
