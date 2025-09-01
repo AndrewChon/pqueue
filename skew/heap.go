@@ -42,14 +42,6 @@ func Meld[K cmp.Ordered, V any](a, b *Tree[K, V]) *Tree[K, V] {
 		return a
 	}
 
-	/*if a.key < b.key {
-		originalRight := a.right
-		a.right = a.left
-		a.left = Meld(b, originalRight)
-		return a
-	}
-	return Meld[K, V](b, a)*/
-
 	if b.key < a.key {
 		a, b = b, a
 	}
