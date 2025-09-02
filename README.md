@@ -40,4 +40,4 @@ Apple MacBook Pro (M4 Pro, 24GB RAM)
 | Binary        | 47.72 ns/op/node | 107.4 ns/node | 523.2 ns/op/node |
 | Pairing       | 41.91 ns/op/node | 69.96 ns/node | 792.2 ns/op/node |
 | Skew          | 184.3 ns/op/node | 381.5 ns/node | 562.1 ns/op/node |
-| Skew Binomial | -                | -             | -                |
+| Skew Binomial | 59.72 ns/op/node | 121.4 ns/node | 1001 ns/op/node  |

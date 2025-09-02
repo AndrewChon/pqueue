@@ -4,81 +4,96 @@ import (
 	"cmp"
 )
 
-type Heap[K cmp.Ordered, V any] struct {
+type Forest[K cmp.Ordered, V any] struct {
 	trees []*Tree[K, V]
 }
 
-func NewHeap[K cmp.Ordered, V any]() *Heap[K, V] {
-	return &Heap[K, V]{
-		trees: make([]*Tree[K, V], 0),
-	}
+func NewForest[K cmp.Ordered, V any]() *Forest[K, V] {
+	return new(Forest[K, V])
 }
 
-func (h *Heap[K, V]) Insert(newKey K, newValue V) {
-	if len(h.trees) >= 2 && h.trees[0].rank == h.trees[1].rank {
-		newTree := skewLink(newKey, newValue, h.trees[0], h.trees[1])
-		newTrees := []*Tree[K, V]{newTree}
-		newTrees = append(newTrees, h.trees[2:]...)
-		h.trees = newTrees
+func (f *Forest[K, V]) Insert(newKey K, newValue V) {
+	var newTree *Tree[K, V]
+
+	if len(f.trees) >= 2 && f.trees[0].rank == f.trees[1].rank {
+		newTree = skewLink(newKey, newValue, f.trees[0], f.trees[1])
+		f.trees = prepend(f.trees[2:], newTree)
 	} else {
-		newTree := &Tree[K, V]{
-			key:      newKey,
-			value:    newValue,
-			rank:     0,
-			children: make([]*Tree[K, V], 0),
+		newTree = &Tree[K, V]{
+			key:   newKey,
+			value: newValue,
+			rank:  0,
 		}
-		newTrees := []*Tree[K, V]{newTree}
-		newTrees = append(newTrees, h.trees...)
-		h.trees = newTrees
+		f.trees = prepend(f.trees, newTree)
 	}
 }
 
-func (h *Heap[K, V]) Merge(other *Heap[K, V]) {
-	h.trees = Merge(h.trees, other.trees)
+func (f *Forest[K, V]) Merge(other *Forest[K, V]) {
+	f.trees = Merge(f.trees, other.trees)
 }
 
-func (h *Heap[K, V]) FindMin() (*Tree[K, V], int) {
-	if len(h.trees) == 0 {
+func (f *Forest[K, V]) FindMin() (*Tree[K, V], int) {
+	if len(f.trees) == 0 {
 		return nil, 0
 	}
 
-	minTree := h.trees[0]
+	minTree := f.trees[0]
 	minI := 0
-	for i := 1; i < len(h.trees); i++ {
-		if h.trees[i].key < minTree.key {
-			minTree = h.trees[i]
-			minI = i
+	for i := 1; i < len(f.trees); i++ {
+		if f.trees[i].key < minTree.key {
+			minTree, minI = f.trees[i], i
 		}
 	}
 
 	return minTree, minI
 }
 
-func (h *Heap[K, V]) RemoveMin() {
-	minTree, minI := h.FindMin()
+func (f *Forest[K, V]) RemoveMin() {
+	minTree, minI := f.FindMin()
 	if minTree == nil {
 		return
 	}
 
-	h.trees = append(h.trees[:minI], h.trees[minI+1:]...)
+	f.Remove(minTree, minI)
+}
 
-	rankZeroChildren := make([]*Tree[K, V], 0)
-	rankNonZeroChildren := make([]*Tree[K, V], 0)
+func (f *Forest[K, V]) Remove(tree *Tree[K, V], i int) {
+	f.trees = append(f.trees[:i], f.trees[i+1:]...)
 
-	for _, child := range minTree.children {
+	children := tree.children
+	if len(children) == 0 {
+		return
+	}
+
+	type kvp struct {
+		key   K
+		value V
+	}
+
+	zeroRankKVPs := make([]*kvp, 0)
+	nonZeroRanked := children[:0]
+
+	// Separate zero-rank children from non-zero-rank children.
+	for _, child := range children {
 		if child.rank == 0 {
-			rankZeroChildren = append(rankZeroChildren, child)
+			zeroRankKVPs = prepend(zeroRankKVPs, &kvp{child.key, child.value})
 		} else {
-			rankNonZeroChildren = append(rankNonZeroChildren, child)
+			nonZeroRanked = prepend(nonZeroRanked, child)
 		}
 	}
 
-	// Merge each non-zero rank child into the heap.
-	h.trees = Merge(h.trees, rankNonZeroChildren)
+	// Merge non-zero-rank children into the forest.
+	if len(nonZeroRanked) > 0 {
+		f.trees = Merge(f.trees, nonZeroRanked)
+	}
 
-	// Then Insert each zero-rank child into the heap.
-	for _, zeroChild := range rankZeroChildren {
-		h.Insert(zeroChild.key, zeroChild.value)
+	// Insert zero-rank children back into the forest.
+	if len(zeroRankKVPs) == 0 {
+		return
+	}
+
+	for _, z := range zeroRankKVPs {
+		f.Insert(z.key, z.value)
 	}
 }
 
@@ -104,84 +119,46 @@ func Merge[K cmp.Ordered, V any](a, b []*Tree[K, V]) []*Tree[K, V] {
 // simpleLink links together two trees of the same rank, with one becoming the leftmost child of the other. The
 // resulting tree will have a rank of one greater than the rank of the two trees.
 func simpleLink[K cmp.Ordered, V any](a, b *Tree[K, V]) *Tree[K, V] {
-	if a.rank != b.rank {
-		panic("cannot use simpleLink on trees of different ranks")
-	}
-	rank := a.rank
+	var parent *Tree[K, V]
+	var child *Tree[K, V]
 
 	if a.key <= b.key {
-		newTree := &Tree[K, V]{
-			key:   a.key,
-			value: a.value,
-			rank:  rank + 1,
-		}
-
-		newTree.children = []*Tree[K, V]{b}
-		newTree.children = append(newTree.children, a.children...)
-
-		return newTree
+		parent, child = a, b
 	} else {
-		newTree := &Tree[K, V]{
-			key:   b.key,
-			value: b.value,
-			rank:  rank + 1,
-		}
-
-		newTree.children = []*Tree[K, V]{a}
-		newTree.children = append(newTree.children, b.children...)
-
-		return newTree
+		parent, child = b, a
 	}
+
+	parent.children = prepend(parent.children, child)
+	parent.rank++
+
+	return parent
 }
 
 // skewLink links together three trees, one tree, a, having a rank of 0, and two trees, b and c, having the same rank as
 // each other.
 func skewLink[K cmp.Ordered, V any](aKey K, aValue V, b, c *Tree[K, V]) *Tree[K, V] {
-	if b.rank != c.rank {
-		panic("")
+	a := &Tree[K, V]{
+		key:   aKey,
+		value: aValue,
+		rank:  0,
 	}
-
-	bcRank := b.rank
 
 	// Type A
 	if aKey <= b.key && aKey <= c.key {
-		newTree := &Tree[K, V]{
-			key:      aKey,
-			value:    aValue,
-			rank:     bcRank + 1,
-			children: []*Tree[K, V]{b, c},
-		}
-		return newTree
-	}
-
-	a := &Tree[K, V]{
-		key:      aKey,
-		value:    aValue,
-		rank:     0,
-		children: make([]*Tree[K, V], 0),
+		a.rank = b.rank + 1
+		a.children = append(a.children, b, c)
+		return a
 	}
 
 	// Type B
 	if b.key <= c.key {
-		newTree := &Tree[K, V]{
-			key:      b.key,
-			value:    b.value,
-			rank:     bcRank + 1,
-			children: []*Tree[K, V]{a, c},
-		}
-		newTree.children = append(newTree.children, b.children...)
-
-		return newTree
+		b.rank++
+		b.children = prepend(b.children, a, c)
+		return b
 	} else {
-		newTree := &Tree[K, V]{
-			key:      c.key,
-			value:    c.value,
-			rank:     bcRank + 1,
-			children: []*Tree[K, V]{a, b},
-		}
-		newTree.children = append(newTree.children, c.children...)
-
-		return newTree
+		c.rank++
+		c.children = prepend(c.children, a, b)
+		return c
 	}
 }
 
@@ -191,8 +168,7 @@ func uniquify[K cmp.Ordered, V any](trees []*Tree[K, V]) []*Tree[K, V] {
 	}
 
 	if trees[0].rank == trees[1].rank {
-		simpleLinked := simpleLink(trees[0], trees[1])
-		return uniquify[K, V](append([]*Tree[K, V]{simpleLinked}, trees[2:]...))
+		return uniquify[K, V](prepend(trees[2:], simpleLink(trees[0], trees[1])))
 	} else {
 		return append(trees[0:1], uniquify[K, V](trees[1:])...)
 	}
@@ -210,9 +186,25 @@ func mergeUnique[K cmp.Ordered, V any](a, b []*Tree[K, V]) []*Tree[K, V] {
 	} else if a[0].rank > b[0].rank {
 		return append(b[0:1], mergeUnique[K, V](a, b[1:])...)
 	} else {
-		simpleLinked := simpleLink(a[0], b[0])
-		uniqueMerged := mergeUnique[K, V](a[1:], b[1:])
-		array := append([]*Tree[K, V]{simpleLinked}, uniqueMerged...)
-		return uniquify[K, V](array)
+		return uniquify[K, V](prepend(mergeUnique[K, V](a[1:], b[1:]), simpleLink(a[0], b[0])))
 	}
+}
+
+// prepend returns a new slice with the elements of y followed by the elements of x. This function is a much more
+// performant alternative to allocating a new slice y and appending the pre-existing slice x to it.
+func prepend[V any](x []*V, y ...*V) []*V {
+	n := len(x) + len(y)
+
+	for cap(x) < n {
+		x = append(x[:cap(x)], nil)
+	}
+
+	x = x[:n]
+	copy(x[len(y):], x)
+
+	for i, v := range y {
+		x[i] = v
+	}
+
+	return x
 }
