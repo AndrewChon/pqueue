@@ -1,5 +1,12 @@
 package pqueue
 
+import (
+	"sync"
+	"sync/atomic"
+)
+
+var circularBufferIDCounter atomic.Uint64
+
 type node[T any] struct {
 	value T
 	left  *node[T]
@@ -7,16 +14,23 @@ type node[T any] struct {
 }
 
 type CircularBuffer[T any] struct {
+	l  sync.RWMutex
+	id uint64
+
 	root *node[T]
 }
 
 func NewCircularBuffer[T any]() *CircularBuffer[T] {
 	return &CircularBuffer[T]{
 		root: nil,
+		id:   circularBufferIDCounter.Add(1),
 	}
 }
 
 func (cb *CircularBuffer[T]) Push(v T) {
+	cb.l.Lock()
+	defer cb.l.Unlock()
+
 	newNode := &node[T]{
 		value: v,
 	}
@@ -34,6 +48,9 @@ func (cb *CircularBuffer[T]) Push(v T) {
 }
 
 func (cb *CircularBuffer[T]) Pop() (v T, ok bool) {
+	cb.l.Lock()
+	defer cb.l.Unlock()
+
 	root, ok := cb.pop()
 	if !ok {
 		return
@@ -55,6 +72,9 @@ func (cb *CircularBuffer[T]) pop() (*node[T], bool) {
 }
 
 func (cb *CircularBuffer[T]) Peek() T {
+	cb.l.RLock()
+	defer cb.l.RUnlock()
+
 	if cb.root == nil {
 		var zero T
 		return zero
@@ -64,6 +84,19 @@ func (cb *CircularBuffer[T]) Peek() T {
 }
 
 func (cb *CircularBuffer[T]) Meld(other *CircularBuffer[T]) {
+	if cb.id < other.id {
+		cb.l.Lock()
+		other.l.Lock()
+	} else if cb.id > other.id {
+		other.l.Lock()
+		cb.l.Lock()
+	} else {
+		panic(ConcurrencySafetyError)
+	}
+
+	defer cb.l.Unlock()
+	defer other.l.Unlock()
+
 	otherRoot := other.root
 	otherLast := otherRoot.left
 

@@ -39,7 +39,7 @@ Apple MacBook Pro (M4 Pro, 24GB RAM)
 | Type          | push        | meld                          | pop         |
 |---------------|-------------|-------------------------------|-------------|
 | Binary        | 49.40 ns/op | 17.72 ns/node                 | 502.7 ns/op |
-| Circular FIFO | 24.46 ns/op | 3.1×10<sup>-6</sup> ns/node   | 5.945 ns/op |
+| Circular FIFO | 24.46 ns/op | 2.58×10<sup>-5</sup> ns/node  | 5.945 ns/op |
 | Pairing       | 48.17 ns/op | 4.83×10<sup>-4</sup> ns/node  | 728.0 ns/op |
 | Skew          | 193.6 ns/op | 3.103×10<sup>-4</sup> ns/node | 587.9 ns/op |
 | Skew Binomial | 62.05 ns/op | 6.102×10<sup>-4</sup> ns/node | 1070 ns/op  |
