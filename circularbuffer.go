@@ -34,17 +34,23 @@ func (cb *CircularBuffer[T]) Push(v T) {
 	newNode := &node[T]{
 		value: v,
 	}
-	newNode.left = newNode
-	newNode.right = newNode
 
 	if cb.root == nil {
+		newNode.left = newNode
+		newNode.right = newNode
 		cb.root = newNode
 		return
 	}
 
 	prevLeft := cb.root.left
+
+	newNode.left = prevLeft
+	newNode.right = cb.root
+
 	cb.root.left = newNode
 	prevLeft.right = newNode
+
+	cb.root = newNode
 }
 
 func (cb *CircularBuffer[T]) Pop() (v T, ok bool) {
