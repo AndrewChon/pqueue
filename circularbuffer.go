@@ -70,11 +70,23 @@ func (cb *CircularBuffer[T]) pop() (*node[T], bool) {
 		return nil, false
 	}
 
-	root := cb.root
-	cb.root.left = cb.root.right
-	cb.root = cb.root.right
+	minNode := cb.root
 
-	return root, true
+	// If there's only one node in the circular buffer.
+	if cb.root.left == cb.root && cb.root.right == cb.root {
+		cb.root = nil
+		return minNode, true
+	}
+
+	minNodeLeft := cb.root.left
+	minNodeRight := cb.root.right
+
+	minNodeLeft.right = minNodeRight
+	minNodeRight.left = minNodeLeft
+
+	cb.root = minNodeRight
+
+	return minNode, true
 }
 
 func (cb *CircularBuffer[T]) Peek() T {
