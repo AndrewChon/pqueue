@@ -10,7 +10,7 @@ import (
 
 var binaryIDCounter atomic.Uint64
 
-// Binary is a concurrency-safe min-priority queue built on a binary heap.
+// Binary is a concurrency-safe, min-priority queue built on a binary heap.
 type Binary[K cmp.Ordered, V any] struct {
 	// A locking order needs to be defined and strictly followed for safety; thus, we do not want to expose the mutex.
 	l  sync.RWMutex

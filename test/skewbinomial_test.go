@@ -25,6 +25,7 @@ func BenchmarkSkewBinomialMeld(b *testing.B) {
 		qb.Push(rand.Intn(math.MaxInt64), rand.Intn(math.MaxInt64))
 	}
 
+	b.ResetTimer()
 	b.StartTimer()
 	qa.Meld(qb)
 	b.StopTimer()

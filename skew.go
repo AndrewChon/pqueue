@@ -10,7 +10,7 @@ import (
 
 var skewIDCounter atomic.Uint64
 
-// Skew is a concurrency-safe min-priority queue built on a skew heap.
+// Skew is a concurrency-safe, min-priority queue built on a skew heap.
 type Skew[K cmp.Ordered, V any] struct {
 	// A locking order needs to be defined and strictly followed for safety; thus, we do not want to expose the mutex.
 	l  sync.RWMutex

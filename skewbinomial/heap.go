@@ -87,7 +87,7 @@ func (f *Forest[K, V]) Remove(tree *Tree[K, V], i int) {
 		f.trees = Merge(f.trees, nonZeroRanked)
 	}
 
-	// Insert zero-rank children back into the forest.
+	// Push zero-rank children back into the forest.
 	if len(zeroRankKVPs) == 0 {
 		return
 	}
@@ -190,21 +190,25 @@ func mergeUnique[K cmp.Ordered, V any](a, b []*Tree[K, V]) []*Tree[K, V] {
 	}
 }
 
-// prepend returns a new slice with the elements of y followed by the elements of x. This function is a much more
-// performant alternative to allocating a new slice y and appending the pre-existing slice x to it.
-func prepend[V any](x []*V, y ...*V) []*V {
-	n := len(x) + len(y)
+// prepend prepends elements to the beginning of a slice. If the slice does not have sufficient capacity, a new
+// underlying array is allocated by appending zero values to the slice with the built-in function append. Otherwise,
+// the contents of the slice are simply shifted to the right, and the provided elements are added to the front. Prepend
+// tends to be more performant than simpler methods, such as creating a new slice of elements x and appending the
+// original slice to it, especially if only one element is to be prepended.
+func prepend[V any](slice []V, elems ...V) []V {
+	n := len(slice) + len(elems)
 
-	for cap(x) < n {
-		x = append(x[:cap(x)], nil)
+	var zero V
+	for cap(slice) < n {
+		slice = append(slice[:cap(slice)], zero)
 	}
 
-	x = x[:n]
-	copy(x[len(y):], x)
+	slice = slice[:n]
+	copy(slice[len(elems):], slice)
 
-	for i, v := range y {
-		x[i] = v
+	for i, v := range elems {
+		slice[i] = v
 	}
 
-	return x
+	return slice
 }

@@ -86,6 +86,7 @@ func (h *Heap[K, V]) Insert(newNode *Node[K, V]) {
 
 func (h *Heap[K, V]) RemoveMin() {
 	size := len(h.array)
+
 	if size == 0 {
 		return
 	}
@@ -108,11 +109,12 @@ func (h *Heap[K, V]) heapifyUp(i int) {
 }
 
 func (h *Heap[K, V]) heapifyDown(i int) {
-	if i >= len(h.array) || i < 0 {
+	size := len(h.array)
+
+	if i >= size || i < 0 {
 		return
 	}
 
-	size := len(h.array)
 	leftChild := 2*i + 1
 	rightChild := 2*i + 2
 	smallest := i

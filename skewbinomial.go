@@ -10,7 +10,7 @@ import (
 
 var skewBinomialIDCounter atomic.Uint64
 
-// SkewBinomial is a concurrency-safe min-priority queue built on a skew binomial heap.
+// SkewBinomial is a concurrency-safe, min-priority queue built on a skew binomial heap.
 type SkewBinomial[K cmp.Ordered, V any] struct {
 	l  sync.RWMutex
 	id uint64

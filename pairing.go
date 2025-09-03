@@ -10,7 +10,7 @@ import (
 
 var pairingIDCounter atomic.Uint64
 
-// Pairing is a concurrency-safe min-priority queue built on a pairing heap.
+// Pairing is a concurrency-safe, min-priority queue built on a pairing heap.
 type Pairing[K cmp.Ordered, V any] struct {
 	// A locking order needs to be defined and strictly followed for safety; thus, we do not want to expose the mutex.
 	l  sync.RWMutex
