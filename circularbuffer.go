@@ -17,6 +17,7 @@ type CircularBuffer[T any] struct {
 	l  sync.RWMutex
 	id uint64
 
+	size int
 	root *node[T]
 }
 
@@ -25,6 +26,21 @@ func NewCircularBuffer[T any]() *CircularBuffer[T] {
 		root: nil,
 		id:   circularBufferIDCounter.Add(1),
 	}
+}
+
+func (cb *CircularBuffer[T]) Size() int {
+	cb.l.RLock()
+	defer cb.l.RUnlock()
+
+	return cb.size
+}
+
+func (cb *CircularBuffer[T]) Clear() {
+	cb.l.Lock()
+	defer cb.l.Unlock()
+
+	cb.root = nil
+	cb.size = 0
 }
 
 func (cb *CircularBuffer[T]) Push(v T) {
@@ -40,6 +56,7 @@ func (cb *CircularBuffer[T]) Push(v T) {
 		newNode.left = newNode
 		newNode.right = newNode
 		cb.root = newNode
+		cb.size = 1
 		return
 	}
 
@@ -54,6 +71,8 @@ func (cb *CircularBuffer[T]) Push(v T) {
 	cb.root.left = newNode
 	newNode.left = tail
 	newNode.right = cb.root
+
+	cb.size++
 }
 
 func (cb *CircularBuffer[T]) Pop() (v T, ok bool) {
@@ -70,6 +89,7 @@ func (cb *CircularBuffer[T]) Pop() (v T, ok bool) {
 	// If cb is a singleton, simply set cb.root to nil.
 	if minNode.left == minNode && minNode.right == minNode {
 		cb.root = nil
+		cb.size = 0
 		return minNode.value, true
 	}
 
@@ -86,6 +106,8 @@ func (cb *CircularBuffer[T]) Pop() (v T, ok bool) {
 
 	// Update cb.root accordingly.
 	cb.root = next
+
+	cb.size--
 
 	return minNode.value, true
 }
@@ -113,8 +135,10 @@ func (cb *CircularBuffer[T]) Meld(other *CircularBuffer[T]) {
 		panic(ConcurrencySafetyError)
 	}
 
-	defer cb.l.Unlock()
-	defer other.l.Unlock()
+	defer func() {
+		cb.l.Unlock()
+		other.l.Unlock()
+	}()
 
 	if other.root == nil {
 		return
@@ -122,7 +146,10 @@ func (cb *CircularBuffer[T]) Meld(other *CircularBuffer[T]) {
 
 	if cb.root == nil {
 		cb.root = other.root
+		cb.size = other.size
+
 		other.root = nil
+		other.size = 0
 		return
 	}
 
@@ -144,6 +171,9 @@ func (cb *CircularBuffer[T]) Meld(other *CircularBuffer[T]) {
 	otherLast.right = cb.root
 	cb.root.left = otherLast
 
+	cb.size += other.size
+
 	// Clear other.
 	other.root = nil
+	other.size = 0
 }
