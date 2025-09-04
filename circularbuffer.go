@@ -35,6 +35,7 @@ func (cb *CircularBuffer[T]) Push(v T) {
 		value: v,
 	}
 
+	// If the buffer is empty, simply set cb.root to newNode.
 	if cb.root == nil {
 		newNode.left = newNode
 		newNode.right = newNode
@@ -42,51 +43,51 @@ func (cb *CircularBuffer[T]) Push(v T) {
 		return
 	}
 
-	prevLeft := cb.root.left
+	tail := cb.root.left
 
-	newNode.left = prevLeft
-	newNode.right = cb.root
+	// Detach the tail of the buffer.
+	// tail.right = nil
+	// cb.root.left = nil
 
+	// Link newNode to the right of the old tail.
+	tail.right = newNode
 	cb.root.left = newNode
-	prevLeft.right = newNode
-
-	cb.root = newNode
+	newNode.left = tail
+	newNode.right = cb.root
 }
 
 func (cb *CircularBuffer[T]) Pop() (v T, ok bool) {
 	cb.l.Lock()
 	defer cb.l.Unlock()
 
-	root, ok := cb.pop()
-	if !ok {
-		return
-	}
-
-	return root.value, ok
-}
-
-func (cb *CircularBuffer[T]) pop() (*node[T], bool) {
 	if cb.root == nil {
-		return nil, false
+		var zero T
+		return zero, false
 	}
 
 	minNode := cb.root
 
-	// If there's only one node in the circular buffer.
-	if cb.root.left == cb.root && cb.root.right == cb.root {
+	// If cb is a singleton, simply set cb.root to nil.
+	if minNode.left == minNode && minNode.right == minNode {
 		cb.root = nil
-		return minNode, true
+		return minNode.value, true
 	}
 
-	minNodeLeft := cb.root.left
-	minNodeRight := cb.root.right
+	next := minNode.right
+	last := minNode.left
 
-	minNodeLeft.right = minNodeRight
-	minNodeRight.left = minNodeLeft
+	// Detach minNode from the rest of the buffer.
+	// minNode.left = nil
+	// minNode.right = nil
 
-	cb.root = minNodeRight
+	// Connect the next node in line to the last node.
+	next.left = last
+	last.right = next
 
-	return minNode, true
+	// Update cb.root accordingly.
+	cb.root = next
+
+	return minNode.value, true
 }
 
 func (cb *CircularBuffer[T]) Peek() T {
@@ -115,14 +116,34 @@ func (cb *CircularBuffer[T]) Meld(other *CircularBuffer[T]) {
 	defer cb.l.Unlock()
 	defer other.l.Unlock()
 
-	otherRoot := other.root
-	otherLast := otherRoot.left
+	if other.root == nil {
+		return
+	}
 
-	cbRoot := cb.root
-	cbLast := cbRoot.left
+	if cb.root == nil {
+		cb.root = other.root
+		other.root = nil
+		return
+	}
 
-	cbLast.right = otherRoot
-	cbRoot.left = otherLast
+	cbLast := cb.root.left
+	otherMinNode := other.root
+	otherLast := otherMinNode.left
 
+	// Detach otherMinNode from its tail.
+	// otherMinNode.left = nil
+
+	// Detach cbLast from its head.
+	// cbLast.right = nil
+
+	// Connect cbLast to otherMinNode.
+	cbLast.right = otherMinNode
+	otherMinNode.left = cbLast
+
+	// Connect otherLast to minNode.
+	otherLast.right = cb.root
+	cb.root.left = otherLast
+
+	// Clear other.
 	other.root = nil
 }
